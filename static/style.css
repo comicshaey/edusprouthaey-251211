@@ -25,43 +25,44 @@ a {
 }
 
 /* ---------------------------
-   전역 헤딩/텍스트 스타일
+   전역 헤딩/텍스트 스타일 – 우선순위 강화(body h2 등)
    --------------------------- */
-h1 {
+body h1 {
   font-size: 2.0rem;
   margin: 18px 0 14px;
   text-align: center !important;
 }
 
-h2 {
+body h2 {
   font-size: 1.6rem;
   margin: 0 0 12px;
   color: #222;
 }
 
-h3 {
+body h3 {
   font-size: 1.4rem;
   margin: 0 0 11px;
   color: #222;
 }
 
-h4 {
+body h4 {
   font-size: 1.2rem;
   margin: 0 0 10px;
   color: #333;
 }
 
-p {
+body p {
   line-height: 1.65;
   margin: 10px 0;
   color: #333;
 }
 
-.muted {
+body .muted {
   color: #666;
   font-size: 0.9rem;
 }
 /* --------------------------- */
+
 
 /* 공통 컨테이너 */
 .shell {
@@ -217,12 +218,12 @@ main {
   color: #111;
 }
 
-/* 링크 한 줄 정렬 */
+/* 링크 한 줄 정렬 (좌측 정렬) */
 .link-row {
   margin-top: 8px;
   display: flex;
-  flex-direction: column; /* 버튼 위, 설명 아래 */
-  align-items: flex-start; /* 왼쪽 정렬 */
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
 }
 
@@ -341,29 +342,19 @@ hr {
 
 /* ===== 테이블 공통 ===== */
 
-/* 비고 */
-.note {
-  margin-top: 8px;
-  font-size: 0.85rem;
-  color: #555;
-}
-
-/* 공통 테이블 래퍼 */
-/* 테이블이 가로폭 넘으면 자동 스크롤 (어휴 씨 되게 많네) */
 .table-wrap,
 .table-wrapper {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;  /* 모바일 부드러운 스크롤 */
+  -webkit-overflow-scrolling: touch;
   margin: 12px 0;
-  padding-bottom: 6px; /* 스크롤바 숨김 방지 여백 */
+  padding-bottom: 6px;
 }
 
-/* 내부 테이블은 최소 너비 확보 (내용 늘어나면 스크롤) */
 .table-wrap table,
 .table-wrapper table {
-  min-width: 800px; /* 필요하면 1000~1200px로 조정 가능 */
+  min-width: 800px;
   border-collapse: collapse;
 }
 
@@ -386,14 +377,20 @@ hr {
   font-weight: 600;
 }
 
+/* 비고 */
+.note {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
 /* =========================================
    전역 레이아웃 통일 패치 (251126)
-   header / main / footer 모두 동일 폭 사용
    ========================================= */
 
 .site-header .shell,
 .site-footer .shell {
   max-width: 880px;
   margin: 0 auto;
-  padding: 0 16px;  /* main과 동일 여백 */
+  padding: 0 16px;
 }
