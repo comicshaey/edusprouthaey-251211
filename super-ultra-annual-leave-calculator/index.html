@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>연차·미사용수당 파이썬 엔진 (Pyodide + 나이스 엑셀)</title>
+  <title>연차·미사용수당 슈퍼 울트라 계산기 (Pyodide + 나이스 엑셀)</title>
 
   <!-- 공통 스타일 -->
   <link rel="stylesheet" href="/static/style.css" />
@@ -14,46 +14,109 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
-    .field { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
-    .numeric { text-align:right; }
-    .status { font-size:0.9rem; color:#555; margin-top:4px; }
-    .danger { color:#c8352d; }
+    /* 이 페이지 전용 컴포넌트 스타일만 약간 추가 */
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .status {
+      font-size: 0.95rem;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .status.danger {
+      color: #c8352d;
+    }
+
     .result-grid {
-      display:flex; flex-direction:column; gap:6px; font-size:0.92rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 1rem;
     }
+
     .result-item {
-      display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
     }
-    .result-label { min-width:200px; font-weight:600; }
+
+    .result-label {
+      min-width: 220px;
+      font-weight: 600;
+      color: #222;
+    }
+
     .result-value {
-      margin-left:auto; text-align:right; font-variant-numeric:tabular-nums;
+      margin-left: auto;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: #111;
     }
-    .highlight { font-size:1.05rem; font-weight:700; }
-    @media (max-width:640px){
-      .result-label{min-width:140px;}
+
+    .highlight {
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    @media (max-width: 640px) {
+      .result-label {
+        min-width: 150px;
+      }
+    }
+
+    .tag-inline {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #e5e5e5;
+      font-size: 0.9rem;
+      color: #555;
+      margin-left: 6px;
+      background: #fafafa;
+    }
+
+    .section-header-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+
+    .section-header-row p {
+      margin: 4px 0 0;
     }
   </style>
 </head>
 <body>
+  <!-- 상단 공통 헤더 -->
   <header class="site-header">
     <div class="shell">
-      <h1>연차·미사용수당 파이썬 엔진 (Pyodide + 나이스 엑셀)</h1>
+      <h1>연차·미사용수당 슈퍼 울트라 계산기 (Pyodide + 나이스 엑셀)</h1>
       <p class="sub">
-        <b>annual_engine.py</b> 안의 파이썬 로직을 <b>브라우저에서 그대로 실행</b>하면서,<br>
-        나이스 <b>근무상황목록(.xlsx)</b>도 업로드해서 복무별 사용시간을 집계하는 데모입니다.
+        나이스 <b>근무상황목록 엑셀</b>을 업로드해서 복무별 사용시간을 집계하고,<br>
+        같은 페이지에서 <b>연차 부여·미사용수당</b>까지 한 번에 계산하는 정적 페이지 버전입니다.<br>
+        모든 금액은 <b>1원 단위 절삭 → 10원 단위 버림</b> 기준으로 표시합니다.
       </p>
     </div>
   </header>
 
   <main>
-    <!-- 0. 나이스 엑셀 업로드 + 파이썬 집계 -->
+    <!-- 0. 나이스 엑셀 업로드 분석 -->
     <section class="section">
-      <h2>0. 나이스 근무상황목록(.xlsx) 업로드 분석 (Pyodide 사용)</h2>
-      <p class="muted">
-        나이스에서 내려받은 <b>근무상황목록</b> 엑셀을 올리면,<br>
-        SheetJS로 엑셀을 읽고, Pyodide 안의 <code>summarize_nice_records()</code>로
-        복무별 사용시간을 집계합니다.
-      </p>
+      <div class="section-header-row">
+        <h2>0. 나이스 근무상황목록(.xlsx) 업로드 분석</h2>
+        <span class="muted local-small">
+          파일 업로드 → SheetJS로 엑셀 파싱 → Pyodide 파이썬 엔진으로 복무별 집계
+        </span>
+      </div>
 
       <div class="card">
         <div class="grid two">
@@ -66,50 +129,62 @@
             <input id="hoursPerDayPy" type="number" step="0.5" value="8" class="numeric" />
           </div>
         </div>
-        <p class="muted" style="font-size:0.85rem;">
-          ※ “종별” 열과 “일수/기간” 열은 헤더 이름을 기준으로 자동 추정합니다.
-          (필요하면 JS에서 후보 목록 수정)
+        <p class="muted local-small">
+          · 헤더에서 <b>“종별”</b> / <b>“일수/기간”</b>과 비슷한 이름을 자동 탐색합니다.
+          필요하면 나중에 열 이름 후보를 코드에서 조정하면 됩니다.
         </p>
-        <div class="row" style="margin-top:8px;">
-          <button type="button" class="btn primary" id="btnAnalyzeNice" disabled>엑셀 업로드·집계</button>
-          <button type="button" class="btn ghost" id="btnResetNice">초기화</button>
+        <div class="row" style="margin-top: 10px;">
+          <button type="button" class="btn primary" id="btnAnalyzeNice" disabled>
+            엑셀 업로드·복무별 집계
+          </button>
+          <button type="button" class="btn ghost" id="btnResetNice">
+            업로드/결과 초기화
+          </button>
         </div>
-        <div id="niceStatus" class="status" style="margin-top:6px;">
-          Pyodide 로딩이 끝나면 업로드 가능해집니다.
+        <div id="niceStatus" class="status" style="margin-top: 6px;">
+          Pyodide 로딩이 끝나면 업로드가 가능해집니다.
         </div>
       </div>
 
-      <div class="table-wrapper" style="margin-top:12px; display:none;" id="niceSummaryWrapPy">
-        <table class="sheetlike">
+      <div class="table-wrapper" id="niceSummaryWrapPy" style="display:none;">
+        <table class="sheetlike simple-table">
           <thead>
             <tr>
-              <th>종별(나이스)</th>
-              <th>건수</th>
-              <th>합계 일·시·분</th>
-              <th>합계 시간(10진법, h)</th>
-              <th>환산 (일 + 시간)</th>
+              <th style="text-align:left;">종별(나이스)</th>
+              <th style="text-align:right;">건수</th>
+              <th style="text-align:right;">합계 (일·시간·분)</th>
+              <th style="text-align:right;">합계 시간(10진법, h)</th>
+              <th style="text-align:right;">환산 (일 + 시간)</th>
             </tr>
           </thead>
           <tbody id="niceSummaryBodyPy"></tbody>
         </table>
+        <p class="note">
+          ※ 여기서 집계된 복무별 사용시간을 참고해 <b>연간 출근율·연차 부여일수</b>를 판단하는 용도로 활용할 수 있습니다.
+          (자동 부여일수 로직은 아래 연차 엔진에서 별도 계산)
+        </p>
       </div>
     </section>
 
     <!-- 1. Pyodide 상태 -->
     <section class="section">
-      <h2>1. Pyodide 상태</h2>
+      <h2>1. 파이썬 엔진(Pyodide) 상태</h2>
       <p class="muted">
-        페이지가 열리면 Pyodide가 자동 로딩되고, <code>annual_engine.py</code>를 불러옵니다.
+        페이지가 열리면 Pyodide가 자동 로딩되고, 같은 폴더에 있는
+        <code>annual_engine.py</code>를 불러와서 파이썬 연차 엔진을 준비합니다.
       </p>
       <div id="pyStatus" class="status">Pyodide 로딩 중...</div>
     </section>
 
-    <!-- 2. 입력값 -->
+    <!-- 2. 연차·수당 계산 입력 -->
     <section class="section">
-      <h2>2. 연차·수당 계산 입력</h2>
+      <h2>2. 연차 부여·수당 계산 입력</h2>
 
       <div class="card">
-        <h3 style="margin-top:0;">2-1. 규정 세트 & 근속·출근 요약</h3>
+        <h3 class="local-h3 local-tight">2-1. 규정 세트 & 근속·출근 요약</h3>
+        <p class="muted local-small">
+          실제 단체협약·지침은 <code>annual_engine.py</code> 안의 <b>RuleProfile</b> 정의를 수정해서 반영할 수 있습니다.
+        </p>
         <div class="grid three">
           <div class="field">
             <label for="ruleId">규정 세트</label>
@@ -117,8 +192,8 @@
               <option value="law_basic">법정 기본형 (근로기준법 단순)</option>
               <option value="gw_school_cba">학교근무자 CBA 예시</option>
               <option value="gw_institute_cba">기관근무자 CBA 예시</option>
-              <option value="gw_wage_guideline">통상임금 지침형 (연차일수 외부산정)</option>
-              <option value="custom">커스텀</option>
+              <option value="gw_wage_guideline">통상임금 지침형 (연차일수 외부 산정)</option>
+              <option value="custom">커스텀(연차일수·수당 규칙 수동)</option>
             </select>
           </div>
           <div class="field">
@@ -141,7 +216,7 @@
             <input id="fullMonths" type="number" step="1" value="12" class="numeric" />
           </div>
           <div class="field">
-            <label>입사·기준일 (문자열로만 전달)</label>
+            <label>입사일 / 기준일 (텍스트)</label>
             <input id="hireDate" type="text" placeholder="예: 2024-03-01" />
             <input id="baseDate" type="text" placeholder="예: 2025-03-01" style="margin-top:4px;" />
           </div>
@@ -149,7 +224,11 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0;">2-2. 임금 정보</h3>
+        <h3 class="local-h3 local-tight">2-2. 임금 정보</h3>
+        <p class="muted local-small">
+          통상임금 세부 내역(포함·제외 수당)은 지침·협약에 따라 별도 산출하고,
+          여기서는 <b>계산에 쓸 단가만 입력</b>하는 구조입니다.
+        </p>
         <div class="grid three">
           <div class="field">
             <label for="wageType">임금형태</label>
@@ -178,7 +257,11 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0;">2-3. 연차 부여·사용 일수</h3>
+        <h3 class="local-h3 local-tight">2-3. 연차 부여·사용 일수</h3>
+        <p class="muted local-small">
+          규정 세트 기준 추천 연차일수를 참고해서 실제 부여일수를 확정하고,
+          나이스 기준 연차 사용일수를 일수로 환산해 입력합니다.
+        </p>
         <div class="grid two">
           <div class="field">
             <label for="grantedDays">부여 연차일수</label>
@@ -191,7 +274,7 @@
         </div>
       </div>
 
-      <div class="row" style="margin-top:8px;">
+      <div class="row" style="margin-top: 10px;">
         <button type="button" class="btn primary" id="btnRun" disabled>
           파이썬 엔진으로 연차·수당 계산
         </button>
@@ -207,35 +290,47 @@
             <div class="result-label">규정 세트</div>
             <div class="result-value" id="resRuleName">-</div>
           </div>
+
           <div class="result-item">
-            <div class="result-label">추천 연차일수</div>
+            <div class="result-label">
+              추천 연차일수
+              <span class="tag-inline">규정 세트 로직 기준</span>
+            </div>
             <div class="result-value" id="resSuggestedDays">-</div>
           </div>
+
           <div class="result-item">
             <div class="result-label">추천 설명</div>
             <div class="result-value" id="resSuggestedDesc" style="text-align:left;">-</div>
           </div>
+
           <div class="result-item">
             <div class="result-label">부여 / 사용 / 미사용 일수</div>
             <div class="result-value" id="resDaysDetail">-</div>
           </div>
+
           <div class="result-item">
-            <div class="result-label">1일 통상임금(원단위)</div>
+            <div class="result-label">1일 통상임금 (계산상, 10원 단위)</div>
             <div class="result-value" id="resDailyWage">-</div>
           </div>
+
           <div class="result-item">
-            <div class="result-label">미사용 연차수당 (계산상, 원단위)</div>
+            <div class="result-label">미사용 연차수당 (계산상, 10원 단위)</div>
             <div class="result-value" id="resPayoutRaw">-</div>
           </div>
+
           <div class="result-item">
-            <div class="result-label">미사용 연차수당 (절사 적용)</div>
+            <div class="result-label">
+              미사용 연차수당 (절사 규칙 적용)
+              <span class="tag-inline" id="resRoundingRule">-</span>
+            </div>
             <div class="result-value highlight" id="resPayoutRounded">-</div>
           </div>
-          <div class="result-item">
-            <div class="result-label">절사 규칙</div>
-            <div class="result-value" id="resRoundingRule">-</div>
-          </div>
         </div>
+        <p class="note">
+          ※ 모든 금액은 <b>1원 단위 절삭 → 10원 단위 버림</b>으로 표시합니다.
+          실제 지급 시에는 각 기관의 단체협약·지침·회계 규칙을 다시 확인해야 합니다.
+        </p>
       </div>
     </section>
   </main>
@@ -243,6 +338,12 @@
   <script>
     let pyodide = null;
     let pyReady = false;
+
+    // 10원 단위 버림 (1원 단위 절삭 공통 적용)
+    function floor10(v) {
+      if (v === null || v === undefined || isNaN(v)) return 0;
+      return Math.floor(Number(v) / 10) * 10;
+    }
 
     async function initPyodide() {
       const statusEl = document.getElementById("pyStatus");
@@ -256,13 +357,13 @@
         await pyodide.runPythonAsync(code);
 
         pyReady = true;
-        statusEl.textContent = "Pyodide + annual_engine.py 로딩 완료.";
-        niceStatus.textContent = "엑셀 파일을 선택한 뒤 [엑셀 업로드·집계] 버튼을 누르세요.";
+        statusEl.textContent = "Pyodide + annual_engine.py 로딩 완료. 계산 가능 상태입니다.";
+        niceStatus.textContent = "엑셀 파일을 선택한 뒤 [엑셀 업로드·복무별 집계] 버튼을 눌러주세요.";
         document.getElementById("btnRun").disabled = false;
         document.getElementById("btnAnalyzeNice").disabled = false;
       } catch (e) {
         console.error(e);
-        statusEl.textContent = "Pyodide 로딩 실패. 콘솔 오류 확인 필요.";
+        statusEl.textContent = "Pyodide 로딩 실패. 콘솔 오류를 확인하세요.";
         statusEl.classList.add("danger");
         niceStatus.textContent = "Pyodide가 준비되지 않아 엑셀 집계를 할 수 없습니다.";
         niceStatus.classList.add("danger");
@@ -272,7 +373,7 @@
     initPyodide();
 
     // ---------------------------
-    // 0. 나이스 엑셀 → 파이썬 summarize_nice_records
+    // 0. 나이스 엑셀 → summarize_nice_records
     // ---------------------------
     function guessLeaveCol(headers) {
       const cands = ["종별", "복무", "근무상태", "근태", "근무구분"];
@@ -329,12 +430,11 @@
           const leaveCol = guessLeaveCol(headers);
           const durCol = guessDurCol(headers);
           if (!leaveCol || !durCol) {
-            alert('“종별” 또는 “일수/기간” 열을 찾지 못했습니다. 헤더명을 확인해야 합니다.');
+            alert('“종별” 또는 “일수/기간” 열을 찾지 못했습니다. 헤더명을 확인해주세요.');
             status.textContent = "열 자동 인식 실패.";
             return;
           }
 
-          // JS → Pyodide 로 넘길 레코드 리스트 구성
           const records = [];
           rows.forEach(r => {
             const leave = r[leaveCol];
@@ -347,7 +447,6 @@
 
           status.textContent = `레코드 ${records.length}건, 파이썬 summarize_nice_records 실행 중...`;
 
-          // JS 배열을 파이썬으로 넘겨서 NiceRecord 리스트 생성 + summarize 호출
           const recordsPy = pyodide.toPy(records);
           pyodide.globals.set("records_js", recordsPy);
           pyodide.globals.set("hours_per_day_js", hpd);
@@ -400,9 +499,12 @@ summarize_nice_records(py_recs)
       document.getElementById("niceFilePy").value = "";
       document.getElementById("niceSummaryBodyPy").innerHTML = "";
       document.getElementById("niceSummaryWrapPy").style.display = "none";
-      document.getElementById("niceStatus").textContent =
-        pyReady ? "엑셀 파일을 선택한 뒤 [엑셀 업로드·집계] 버튼을 누르세요." :
-                  "Pyodide가 준비되면 업로드 가능해집니다.";
+      const niceStatus = document.getElementById("niceStatus");
+      niceStatus.textContent =
+        pyReady
+          ? "엑셀 파일을 선택한 뒤 [엑셀 업로드·복무별 집계] 버튼을 누르세요."
+          : "Pyodide가 준비되면 업로드 가능해집니다.";
+      niceStatus.classList.remove("danger");
     });
 
     // ---------------------------
@@ -448,33 +550,50 @@ full_pipeline("${ruleId}", svc_js, wage_js, ${granted}, ${used})
 
         const res = result.toJs({ deep: true });
 
+        // 규정 세트
         document.getElementById("resRuleName").textContent = res.rule.name || "-";
 
+        // 추천 연차일수
         const sug = res.suggestion || {};
         document.getElementById("resSuggestedDays").textContent =
           (sug.suggested_days === null || sug.suggested_days === undefined)
             ? "직접 입력 필요"
-            : sug.suggested_days.toString() + " 일";
+            : `${sug.suggested_days} 일`;
         document.getElementById("resSuggestedDesc").textContent = sug.description || "-";
 
+        // 수당 계산
         const pay = res.payout || {};
+        const grantedDays = pay.granted_days ?? 0;
+        const usedDays = pay.used_days ?? 0;
+        const unusedDays = pay.unused_days ?? 0;
+
         document.getElementById("resDaysDetail").textContent =
-          `부여 ${pay.granted_days ?? 0}일 / 사용 ${pay.used_days ?? 0}일 / 미사용 ${pay.unused_days ?? 0}일`;
+          `부여 ${grantedDays}일 / 사용 ${usedDays}일 / 미사용 ${unusedDays}일`;
+
+        const daily = floor10(pay.daily_wage_raw || 0);
+        const payoutRaw = floor10(pay.payout_raw || 0);
+        const payoutRounded = floor10(pay.payout_rounded || 0);
 
         document.getElementById("resDailyWage").textContent =
-          pay.daily_wage_raw ? Math.round(pay.daily_wage_raw).toLocaleString("ko-KR") + " 원" : "-";
+          daily > 0 ? daily.toLocaleString("ko-KR") + " 원" : "-";
 
         document.getElementById("resPayoutRaw").textContent =
-          pay.payout_raw ? Math.round(pay.payout_raw).toLocaleString("ko-KR") + " 원" : "-";
+          payoutRaw > 0 ? payoutRaw.toLocaleString("ko-KR") + " 원" : "-";
 
         document.getElementById("resPayoutRounded").textContent =
-          pay.payout_rounded ? Math.round(pay.payout_rounded).toLocaleString("ko-KR") + " 원" : "-";
+          payoutRounded > 0 ? payoutRounded.toLocaleString("ko-KR") + " 원" : "-";
+
+        const step = pay.rounding_step ?? 10;
+        const mode = pay.rounding_mode || "floor";
+        let modeLabel = "버림";
+        if (mode === "round") modeLabel = "반올림";
+        else if (mode === "ceil") modeLabel = "올림";
 
         document.getElementById("resRoundingRule").textContent =
-          `${pay.rounding_step ?? 10}원 단위 ${pay.rounding_mode || "floor"} (1원 절삭)`;
+          `${step}원 단위 ${modeLabel} + 1원 단위 공통 절삭`;
       } catch (e) {
         console.error(e);
-        alert("파이썬 엔진 실행 중 오류가 발생했습니다. 콘솔을 확인하세요.");
+        alert("파이썬 엔진 실행 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
       }
     });
   </script>
